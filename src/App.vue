@@ -33,3 +33,37 @@ const route = useRoute();
 <template>
   <router-view />
 </template>
+
+<script setup>
+import { onMounted } from 'vue';
+import api from './services/api'; // Apne api service ka sahi path check kar lein
+
+const loadGlobalBranding = async () => {
+  try {
+    const res = await api.get('/admin/settings');
+    
+    if (res.data) {
+      // 1. Browser Tab Title dynamically change karein
+      if (res.data.site_name) {
+        document.title = res.data.site_name;
+      }
+      
+      // 2. Browser Favicon dynamically change karein
+      if (res.data.site_favicon) {
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.getElementsByTagName('head')[0].appendChild(link);
+        }
+        link.href = res.data.site_favicon;
+      }
+    }
+  } catch (e) {
+    console.error("Global branding loading failed:", e);
+  }
+};
+
+// Application load hote hi trigger hoga
+onMounted(loadGlobalBranding);
+</script>
