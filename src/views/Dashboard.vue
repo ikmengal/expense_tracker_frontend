@@ -1,35 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-50/50 flex flex-col antialiased font-sans transition-colors duration-200">
     <div class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 space-y-6 md:space-y-8 w-full">
-      
-      <div class="p-5 bg-white shadow rounded-xl mb-6 border border-indigo-50/50">
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <span>💡</span> AI Financial Coach
-            </h3>
-            <p class="text-xs text-slate-500 mt-0.5">Pichle 30 din ke kharchon ka automatic smart analysis haasil karein.</p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <button 
-            @click="fetchMonthlyAiInsights" 
-            :disabled="insightsLoading"
-            class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-semibold tracking-wide transition shadow-sm shadow-indigo-200 flex items-center gap-2"
-          >
-            <span v-if="insightsLoading" class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
-            {{ insightsLoading ? 'Trends Analyze Ho Rahe Hain...' : 'Get AI Savings Advice' }}
-          </button>
-        </div>
-
-        <div v-if="monthlyAiInsights" class="mt-4 p-4 bg-gradient-to-r from-indigo-50/70 to-blue-50/40 border-l-4 border-indigo-600 rounded-r-xl transition-all duration-300">
-          <p class="text-sm leading-relaxed text-slate-700 font-medium whitespace-pre-line">
-            {{ monthlyAiInsights }}
-          </p>
-        </div>
-      </div>
-
       <!-- TOP DASHBOARD MASTER HEADER -->
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-200/60 pb-5">
         <div>
@@ -107,7 +78,6 @@
 
       <!-- CONTENT HYDRATED GRID HOOKS -->
       <div v-else class="space-y-6 md:space-y-8">
-        
         <!-- COUNTER METRICS STATISTICS ROW -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           <!-- INCOME BLOCK -->
@@ -179,39 +149,73 @@
           </div>
         </div>
 
-        <!-- SAVINGS & STRATEGIC ALLOCATION TARGET INTERFACE -->
-        <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 transition duration-300 hover:shadow-md">
-          <div class="space-y-1.5">
-            <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Savings & Financial Goals</span>
-            <h2 class="text-base md:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Capitalize Goals Milestone Configuration 
-              <span class="text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">AI Automated</span>
-            </h2>
-            <p class="text-xs text-slate-500 max-w-xl font-medium leading-relaxed">
-              {{ aiInsights?.goal_forecast || 'No structural forecast metrics calculated for this month loop.' }}
-            </p>
-            
-            <router-link to="/goals" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 mt-2 group transition">
-              <span>Manage Allocation Vaults</span> 
-              <span class="transform transition group-hover:translate-x-1">➡️</span>
-            </router-link>
-          </div>
-
-          <div class="flex items-center gap-3 self-start md:self-center flex-shrink-0">
-            <button 
-              v-if="aiInsights?.recommended_transfer_amount > 0"
-              type="button"
-              @click="triggerAiGoalSuggestion" 
-              class="px-4 py-2.5 bg-slate-950 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1.5"
-            >
-              🤖 Smart Sync Allocation
-            </button>
-            <div v-else class="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-black rounded-xl flex items-center gap-1">
-              ✅ Goals Fully Guarded
+        <!-- Main Grid Container: 6-6 Columns Split on Desktop -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <!-- CARD 1: Savings & Financial Goals -->
+          <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-xs flex flex-col justify-between gap-4 transition duration-300 hover:shadow-md">
+            <div class="space-y-1.5">
+              <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Savings & Financial Goals</span>
+              <h2 class="text-base md:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2 flex-wrap">
+                Capitalize Goals Milestone Configuration 
+                <span class="text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">AI Automated</span>
+              </h2>
+              <p class="text-xs text-slate-500 max-w-xl font-medium leading-relaxed">
+                {{ aiInsights?.goal_forecast || 'No structural forecast metrics calculated for this month loop.' }}
+              </p>
+              
+              <router-link to="/goals" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 mt-2 group transition">
+                <span>Manage Allocation Vaults</span> 
+                <span class="transform transition group-hover:translate-x-1">➡️</span>
+              </router-link>
             </div>
 
-            <div class="p-3.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-600/20">
-              <span class="text-xl block leading-none">🎯</span>
+            <div class="flex items-center gap-3 mt-2">
+              <button 
+                v-if="aiInsights?.recommended_transfer_amount > 0"
+                type="button"
+                @click="triggerAiGoalSuggestion" 
+                class="px-4 py-2.5 bg-slate-950 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1.5"
+              >
+                🤖 Smart Sync Allocation
+              </button>
+              <div v-else class="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-black rounded-xl flex items-center gap-1">
+                ✅ Goals Fully Guarded
+              </div>
+
+              <div class="p-3.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-600/20 ml-auto">
+                <span class="text-xl block leading-none">🎯</span>
+              </div>
+            </div>
+          </div>
+          <!-- CARD 2: AI Financial Coach -->
+          <div class="p-5 md:p-6 bg-white shadow rounded-2xl border border-gray-100 flex flex-col justify-between gap-4 transition duration-300 hover:shadow-md">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <span>💡</span> AI Financial Coach
+                  </h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Pichle 30 din ke kharchon ka automatic smart analysis haasil karein.</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <button 
+                  @click="fetchMonthlyAiInsights" 
+                  :disabled="insightsLoading"
+                  class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-semibold tracking-wide transition shadow-sm shadow-indigo-200 flex items-center gap-2"
+                >
+                  <span v-if="insightsLoading" class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                  {{ insightsLoading ? 'Trends Analyze Ho Rahe Hain...' : 'Get AI Savings Advice' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- AI Insights Output Section inside Card -->
+            <div v-if="monthlyAiInsights" class="mt-2 p-4 bg-gradient-to-r from-indigo-50/70 to-blue-50/40 border-l-4 border-indigo-600 rounded-r-xl transition-all duration-300">
+              <p class="text-sm leading-relaxed text-slate-700 font-medium whitespace-pre-line">
+                {{ monthlyAiInsights }}
+              </p>
             </div>
           </div>
         </div>
@@ -247,7 +251,6 @@
 
         <!-- TRANSACTION JOURNAL GRID CONTENT STRUCTURE -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
-          
           <!-- LEFT SIDE: RECENT DATA ENTRY LIST -->
           <div class="lg:col-span-2 bg-white rounded-2xl shadow-xs border border-gray-100 p-4 md:p-6 flex flex-col justify-between overflow-hidden">
             <div>
@@ -338,7 +341,6 @@
               </router-link>
             </div>
           </div>
-
           <!-- RIGHT SIDE: INTERACTIVE TRANSACTION INPUT MANAGER -->
           <div class="space-y-6">
             <div class="bg-white rounded-2xl border border-gray-100 shadow-xs p-5 md:p-6 space-y-4">
@@ -456,7 +458,6 @@
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
