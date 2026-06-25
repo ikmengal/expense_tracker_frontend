@@ -5,17 +5,18 @@
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-200/60 pb-5">
         <div>
           <h1 class="text-xl md:text-2xl font-black text-slate-900 text-center lg:text-left tracking-tight">
-            Welcome back, {{ userName }}!
+            Welcome, {{ userName }}!
           </h1>
           <p class="text-xs text-slate-400 mt-0.5 text-center lg:text-left">
             Monitor micro-ledger items, log automatic receipts, and analyze metric analytics.
           </p>
         </div>
         
-        <!-- DASHBOARD FILTER CONTROLS BAR -->
-        <div class="bg-white p-3 rounded-2xl border border-gray-100 shadow-xs flex flex-col sm:flex-row items-center justify-center gap-3 w-full lg:w-auto">
+        <!-- DASHBOARD FILTER CONTROLS BAR (All unified in one line) -->
+        <div class="bg-white p-2 rounded-2xl border border-gray-100 shadow-xs flex flex-wrap lg:flex-nowrap items-center justify-center lg:justify-end gap-2.5 w-full lg:w-auto">
+          
           <!-- Currency Swapper Selection -->
-          <div class="flex items-center space-x-2 w-full sm:w-auto justify-center bg-slate-50 px-2.5 py-1.5 rounded-xl border border-gray-100">
+          <div class="flex items-center space-x-2 w-full sm:w-auto justify-center bg-slate-50 px-2.5 py-1.5 rounded-xl border border-gray-100/80">
             <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap">View In:</span>
             <select 
               v-model="selectedDashboardCurrency" 
@@ -29,43 +30,44 @@
             </select>
           </div>
 
+          <!-- Month & Year Selectors (Moved inside the bar) -->
+          <div class="flex items-center gap-1.5 w-full sm:w-auto justify-center">
+            <select 
+              v-model="selectedMonth" 
+              class="bg-slate-50 border border-gray-100/80 text-slate-700 text-xs rounded-xl px-2.5 py-1.5 font-bold focus:outline-none cursor-pointer"
+            >
+              <option v-for="m in monthsList" :key="m.value" :value="m.value">
+                {{ m.label }}
+              </option>
+            </select>
+            <select 
+              v-model="selectedYear" 
+              class="bg-slate-50 border border-gray-100/80 text-slate-700 text-xs rounded-xl px-2.5 py-1.5 font-bold focus:outline-none cursor-pointer"
+            >
+              <option v-for="y in yearsList" :key="y" :value="y">
+                {{ y }}
+              </option>
+            </select>
+          </div>
+
           <!-- Date Interval Matrix Inputs -->
-          <div class="flex items-center space-x-1.5 w-full sm:w-auto justify-center">
-            <input type="date" v-model="filter.start_date" class="w-full sm:w-auto px-2.5 py-1.5 border border-gray-200 rounded-xl text-xs font-semibold text-slate-600 focus:ring-2 focus:ring-indigo-600/10 focus:border-indigo-600 focus:outline-none transition" />
-            <span class="text-slate-400 text-xs font-medium">to</span>
-            <input type="date" v-model="filter.end_date" class="w-full sm:w-auto px-2.5 py-1.5 border border-gray-200 rounded-xl text-xs font-semibold text-slate-600 focus:ring-2 focus:ring-indigo-600/10 focus:border-indigo-600 focus:outline-none transition" />
+          <div class="flex items-center space-x-1 w-full sm:w-auto justify-center">
+            <input type="date" v-model="filter.start_date" class="w-full sm:w-auto px-2 py-1.5 border border-gray-200 rounded-xl text-xs font-semibold text-slate-600 focus:ring-2 focus:ring-indigo-600/10 focus:border-indigo-600 focus:outline-none transition" />
+            <span class="text-slate-400 text-[11px] font-medium px-0.5">to</span>
+            <input type="date" v-model="filter.end_date" class="w-full sm:w-auto px-2 py-1.5 border border-gray-200 rounded-xl text-xs font-semibold text-slate-600 focus:ring-2 focus:ring-indigo-600/10 focus:border-indigo-600 focus:outline-none transition" />
           </div>
 
           <!-- Statement Export Triggers -->
-          <div class="flex items-center space-x-2 w-full sm:w-auto justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
-            <button @click="downloadReport('pdf')" :disabled="exportLoading" class="flex-1 sm:flex-none text-center bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-1.5 rounded-xl text-xs font-bold transition disabled:opacity-50">
+          <div class="flex items-center space-x-1.5 w-full sm:w-auto justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+            <button @click="downloadReport('pdf')" :disabled="exportLoading" class="flex-1 sm:flex-none text-center bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-1.5 rounded-xl text-xs font-bold transition disabled:opacity-50 whitespace-nowrap">
               {{ exportLoading ? '⏳ Wait...' : '📄 PDF Report' }}
             </button>
-            <button @click="downloadReport('excel')" :disabled="exportLoading" class="flex-1 sm:flex-none text-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-3 py-1.5 rounded-xl text-xs font-bold transition disabled:opacity-50">
+            <button @click="downloadReport('excel')" :disabled="exportLoading" class="flex-1 sm:flex-none text-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-3 py-1.5 rounded-xl text-xs font-bold transition disabled:opacity-50 whitespace-nowrap">
               {{ exportLoading ? '⏳ Wait...' : '📊 Excel Sheet' }}
             </button>
           </div>
-        </div>
-      </div>
 
-      <!-- TEMPORAL NAVIGATION MATRIX -->
-      <div class="flex items-center gap-2">
-        <select 
-          v-model="selectedMonth" 
-          class="bg-white border border-gray-100 text-slate-700 text-xs rounded-xl px-3 py-1.5 font-bold focus:ring-2 focus:ring-indigo-600/10 focus:border-indigo-500 shadow-xs outline-none cursor-pointer"
-        >
-          <option v-for="m in monthsList" :key="m.value" :value="m.value">
-            {{ m.label }}
-          </option>
-        </select>
-        <select 
-          v-model="selectedYear" 
-          class="bg-white border border-gray-100 text-slate-700 text-xs rounded-xl px-3 py-1.5 font-bold focus:ring-2 focus:ring-indigo-600/10 focus:border-indigo-500 shadow-xs outline-none cursor-pointer"
-        >
-          <option v-for="y in yearsList" :key="y" :value="y">
-            {{ y }}
-          </option>
-        </select>
+        </div>
       </div>
 
       <!-- MAIN LOADER STATE FRAME -->

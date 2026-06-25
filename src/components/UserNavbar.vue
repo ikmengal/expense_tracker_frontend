@@ -34,28 +34,28 @@
               class="px-3 py-2 rounded-xl text-sm font-medium transition" 
               :class="route.path === '/categories' ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'"
             >
-              Manage Categories
+              Categories
             </router-link>
             <router-link 
               to="/transactions" 
               class="px-3 py-2 rounded-xl text-sm font-medium transition" 
               :class="route.path === '/transactions' ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'"
             >
-              Manage Transactions
+              Transactions
             </router-link>
             <router-link 
               to="/support" 
               class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition" 
               active-class="bg-indigo-50 text-indigo-700 font-bold border border-indigo-100/50"
             >
-              🎧 Support Help
+              Support Help
             </router-link>
             <router-link 
               to="/goals" 
               class="px-3 py-2 rounded-xl text-sm font-medium transition"
               :class="route.path === '/goals' ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'"
             >
-              🎯 Saving Goals
+              Saving Goals
             </router-link>
           </div>
         </div>
@@ -75,10 +75,10 @@
               />
               <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
             </div>
-            <span class="text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition hidden sm:inline">
-              Hi, {{ user.name || 'User' }}
-            </span>
-            <span class="text-xs text-gray-400 transition group-hover:text-indigo-600">▼</span>
+            <!-- <span class="text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition hidden sm:inline">
+              {{ user.name || 'User' }}
+            </span> -->
+            <!-- <span class="text-xs text-gray-400 transition group-hover:text-indigo-600">▼</span> -->
           </button>
 
           <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="md:hidden p-2 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 focus:outline-none transition">
@@ -133,13 +133,13 @@
           Dashboard
         </router-link>
         <router-link @click="isMobileMenuOpen = false" to="/categories" class="block px-4 py-2.5 rounded-xl text-base font-medium" :class="route.path === '/categories' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
-          Manage Categories
+          Categories
         </router-link>
         <router-link @click="isMobileMenuOpen = false" to="/transactions" class="block px-4 py-2.5 rounded-xl text-base font-medium" :class="route.path === '/transactions' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
-          Manage Transactions
+          Transactions
         </router-link>
         <router-link @click="isMobileMenuOpen = false" to="/goals" class="block px-4 py-2.5 rounded-xl text-base font-medium" :class="route.path === '/goals' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
-          🎯 Saving Goals
+          Saving Goals
         </router-link>
       </div>
     </div>
