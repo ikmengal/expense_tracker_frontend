@@ -2,6 +2,34 @@
   <div class="min-h-screen bg-slate-50/50 flex flex-col antialiased font-sans transition-colors duration-200">
     <div class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 space-y-6 md:space-y-8 w-full">
       
+      <div class="p-5 bg-white shadow rounded-xl mb-6 border border-indigo-50/50">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span>💡</span> AI Financial Coach
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Pichle 30 din ke kharchon ka automatic smart analysis haasil karein.</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button 
+            @click="fetchMonthlyAiInsights" 
+            :disabled="insightsLoading"
+            class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-semibold tracking-wide transition shadow-sm shadow-indigo-200 flex items-center gap-2"
+          >
+            <span v-if="insightsLoading" class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+            {{ insightsLoading ? 'Trends Analyze Ho Rahe Hain...' : 'Get AI Savings Advice' }}
+          </button>
+        </div>
+
+        <div v-if="monthlyAiInsights" class="mt-4 p-4 bg-gradient-to-r from-indigo-50/70 to-blue-50/40 border-l-4 border-indigo-600 rounded-r-xl transition-all duration-300">
+          <p class="text-sm leading-relaxed text-slate-700 font-medium whitespace-pre-line">
+            {{ monthlyAiInsights }}
+          </p>
+        </div>
+      </div>
+
       <!-- TOP DASHBOARD MASTER HEADER -->
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-200/60 pb-5">
         <div>
@@ -508,11 +536,12 @@
   </div>
 </template>
 
-<script setup>
+<!-- <script setup>
   import { ref, onMounted, computed, watch } from 'vue';
   import { useRoute } from 'vue-router';
   import api from '../services/api';
   import Swal from 'sweetalert2';
+  import axios from 'axios';
   
   // --- Chart.js Core Imports ---
   import { Bar, Doughnut } from 'vue-chartjs';
@@ -922,6 +951,539 @@
       await fetchDashboardData();
       await fetchBudgetAlerts();
       Swal.fire({ title: 'Success', text: 'Transaction recorded.', icon: 'success', timer: 1500, showConfirmButton: false });
+    } catch (error) {
+      addFormError.value = error.response?.data?.errors ? `❌ ${Object.values(error.response.data.errors).flat()[0]}` : 'Something went wrong.';
+    } finally { formLoading.value = false; }
+  };
+
+  const downloadReport = async (format) => {
+    exportLoading.value = true;
+    try {
+      const res = await api.get(`/reports/export/${format}`, { params: filter.value, responseType: 'blob' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(new Blob([res.data]));
+      link.download = `Expense-Report.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      link.click();
+    } catch (e) {
+      Swal.fire({ title: 'Export Failed', text: 'Unable to download report.', icon: 'error' });
+    } finally { exportLoading.value = false; }
+  };
+
+  const openEditModal = (tx) => {
+    currentEditingId.value = tx.id;
+    editForm.value = { amount: tx.amount, category_id: tx.category_id, currency: tx.currency, description: tx.description, date: tx.date };
+    showEditModal.value = true;
+  };
+
+  const closeEditModal = () => {
+    showEditModal.value = false;
+    currentEditingId.value = null;
+    editFormError.value = '';
+  };
+
+  const handleUpdateTransaction = async () => {
+    editFormError.value = '';
+    editFormLoading.value = true;
+    try {
+      await api.put(`/transactions/${currentEditingId.value}`, editForm.value);
+      closeEditModal();
+      await fetchDashboardData();
+      await fetchBudgetAlerts();
+      Swal.fire({ title: 'Updated', text: 'Transaction updated successfully.', icon: 'success', timer: 1500, showConfirmButton: false });
+    } catch (err) {
+      editFormError.value = '❌ Failed to update transaction.';
+    } finally { editFormLoading.value = false; }
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    try {
+      const result = await Swal.fire({ title: 'Delete Entry?', text: "Permanently delete this record?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444' });
+      if (!result.isConfirmed) return;
+
+      await api.delete(`/transactions/${id}`);
+      await fetchDashboardData();
+      await fetchBudgetAlerts();
+      Swal.fire({ title: 'Deleted', text: 'Record removed.', icon: 'success', timer: 1200, showConfirmButton: false });
+    } catch (e) {
+      Swal.fire({ title: 'Error', text: 'Failed to delete execution.', icon: 'error' });
+    }
+  };
+
+  const triggerAiGoalSuggestion = () => {
+    if (!aiInsights.value.recommended_transfer_amount || aiInsights.value.recommended_transfer_amount <= 0) {
+      Swal.fire({ title: 'Fully Synced', text: 'No active savings recommendation pending.', icon: 'info' });
+      return;
+    }
+
+    Swal.fire({
+      title: 'AI Savings Smart-Analysis',
+      html: `AI recommends moving <b>${getCurrencySymbol(selectedDashboardCurrency.value)} ${aiInsights.value.recommended_transfer_amount}</b> to your active goal.`,
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonColor: '#4f46e5',
+      confirmButtonText: 'Yes, Transfer Now'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await api.post(`/goals/${aiInsights.value.recommended_goal_id}/allocate`, { amount: aiInsights.value.recommended_transfer_amount });
+          Swal.fire('Transferred!', `Successfully allocated target funds.`, 'success');
+          await fetchDashboardData();
+        } catch (error) {
+          await Swal.fire('Error', 'Failed to allocate funds via API.', 'error');
+        }
+      }
+    });
+  };
+</script> -->
+
+<script setup>
+  import { ref, onMounted, computed, watch } from 'vue';
+  import { useRoute } from 'vue-router';
+  import api from '../services/api';
+  import Swal from 'sweetalert2';
+  import axios from 'axios';
+  
+  // --- Chart.js Core Imports ---
+  import { Bar, Doughnut } from 'vue-chartjs';
+  import { 
+    Chart as ChartJS, Title, Tooltip, Legend, BarElement, 
+    CategoryScale, LinearScale, ArcElement 
+  } from 'chart.js';
+
+  ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement);
+
+  const route = useRoute();
+  const userName = ref('User');
+  const loading = ref(true);
+  const exportLoading = ref(false);
+  const formLoading = ref(false);
+  const editFormLoading = ref(false);
+  const showEditModal = ref(false);
+  
+  const categories = ref([]);
+  const budgetAlerts = ref([]);
+  const upcoming_bills = ref([]);
+  const currentEditingId = ref(null);
+  const addFormError = ref('');
+  const editFormError = ref('');
+  const selectedDashboardCurrency = ref('PKR');
+
+  // --- 💡 Naye AI Features ke States ---
+  const monthlyAiInsights = ref('');
+  const insightsLoading = ref(false);
+
+  // --- 📅 Month & Year Dynamic Filter States ---
+  const currentPeriod = new Date();
+  const selectedMonth = ref(currentPeriod.getMonth() + 1); // By default: Current Month (1-12)
+  const selectedYear = ref(currentPeriod.getFullYear());  // By default: Current Year
+
+  const monthsList = [
+    { value: 1, label: 'January' }, { value: 2, label: 'February' },
+    { value: 3, label: 'March' }, { value: 4, label: 'April' },
+    { value: 5, label: 'May' }, { value: 6, label: 'June' },
+    { value: 7, label: 'July' }, { value: 8, label: 'August' },
+    { value: 9, label: 'September' }, { value: 10, label: 'October' },
+    { value: 11, label: 'November' }, { value: 12, label: 'December' }
+  ];
+
+  const yearsList = computed(() => {
+    const currentY = new Date().getFullYear();
+    return [currentY - 1, currentY, currentY + 1]; // Previous Year, Current Year, Next Year
+  });
+
+  // --- UI Media DOM Inputs ---
+  const receiptInput = ref(null);
+  const videoStream = ref(null);
+  const showCameraModal = ref(false);
+
+  // --- Voice / Audio states ---
+  const isListening = ref(false);
+  const voiceTranscript = ref('');
+  let recognition = null;
+  let localMediaStream = null;
+
+  // --- Core States & Fallbacks ---
+  const stats = ref({ 
+    summary: { total_income: 0, total_expense: 0, net_balance: 0 }, 
+    recent_transactions: [],
+    monthly_cashflow: { labels: [], income: [], expense: [] },
+    category_breakdown: { labels: [], data: [] }
+  });
+
+  const aiInsights = ref({
+    insight_text: 'Analyzing behaviors...',
+    goal_forecast: 'Mapping targeted timeline schedules...',
+    recommended_goal_id: null,
+    recommended_transfer_amount: 0
+  });
+
+  const filter = ref({
+    start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end_date: new Date().toISOString().split('T')[0]
+  });
+
+  const form = ref({ amount: '', category_id: '', currency: 'PKR', description: '', date: new Date().toISOString().split('T')[0] });
+  const editForm = ref({ amount: '', category_id: '', currency: 'PKR', description: '', date: '' });
+
+  // --- Computed Metrics ---
+  const displayedTransactions = computed(() => stats.value.recent_transactions?.slice(0, 5) || []);
+  const hasCategoryBreakdownData = computed(() => stats.value.category_breakdown?.data?.length > 0);
+
+  const barChartData = computed(() => ({
+    labels: stats.value.monthly_cashflow?.labels || [],
+    datasets: [
+      { label: 'Income', backgroundColor: '#10b981', borderRadius: 5, data: stats.value.monthly_cashflow?.income || [] },
+      { label: 'Expense', backgroundColor: '#ef4444', borderRadius: 5, data: stats.value.monthly_cashflow?.expense || [] }
+    ]
+  }));
+
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 12, font: { weight: '600', size: 11 } } },
+      tooltip: { padding: 10, cornerRadius: 6 }
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: { ticks: { callback: (value) => value.toLocaleString() } }
+    }
+  };
+
+  const doughnutChartData = computed(() => ({
+    labels: stats.value.category_breakdown?.labels || [],
+    datasets: [{
+      backgroundColor: ['#6366f1', '#3b82f6', '#ec4899', '#f59e0b', '#14b8a6', '#8b5cf6', '#a855f7', '#64748b'],
+      borderWidth: 2,
+      borderColor: '#ffffff',
+      data: stats.value.category_breakdown?.data || []
+    }]
+  }));
+
+  const doughnutChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 12, boxWidth: 10, font: { size: 10, weight: '500' } } },
+      tooltip: { padding: 10 }
+    }
+  };
+
+  // ==========================================
+  // 🔥 Core Engine Core Methods
+  // ==========================================
+  
+  const fetchDashboardData = async () => {
+    try {
+      loading.value = true;
+      const response = await api.get('/dashboard-stats', { 
+        params: { 
+          currency: selectedDashboardCurrency.value,
+          month: selectedMonth.value,     // ⚡ Added dynamic month filter
+          year: selectedYear.value        // ⚡ Added dynamic year filter
+        } 
+      });
+      
+      stats.value = {
+        summary: response.data.summary || { total_income: 0, total_expense: 0, net_balance: 0 },
+        recent_transactions: response.data.recent_transactions || [],
+        monthly_cashflow: response.data.monthly_cashflow || { labels: [], income: [], expense: [] },
+        category_breakdown: response.data.category_breakdown || { labels: [], data: [] }
+      };
+
+      upcoming_bills.value = response.data.upcoming_bills || [];
+      if (response.data.ai_insights) aiInsights.value = response.data.ai_insights;
+    } catch (e) {
+      console.error("Error fetching dashboard stats:", e);
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const fetchBudgetAlerts = async () => {
+    try { 
+      const res = await api.get('/reports/budget-alerts', {
+        params: {
+          month: selectedMonth.value,     // ⚡ Sync tracking metrics context
+          year: selectedYear.value
+        }
+      }); 
+      budgetAlerts.value = res.data; 
+    } catch (e) { console.error(e); }
+  };
+
+  // --- 💡 AI Monthly Insights Function ---
+  const fetchMonthlyAiInsights = async () => {
+    try {
+      insightsLoading.value = true;
+      monthlyAiInsights.value = '';
+      const response = await api.get('/expenses/insights'); 
+      if (response.data && response.data.success) {
+        monthlyAiInsights.value = response.data.insights;
+      }
+    } catch (error) {
+      console.error("Error fetching AI Insights:", error);
+      monthlyAiInsights.value = "❌ Insights load nahi ho sakein. Dobara koshish karein.";
+    } finally {
+      insightsLoading.value = false;
+    }
+  };
+
+  // --- 🕵️ Watcher for Filters ---
+  watch([selectedMonth, selectedYear], () => {
+    fetchDashboardData();
+    fetchBudgetAlerts();
+  });
+
+  const sendImageToAiBackend = async (fileObject) => {
+    addFormError.value = '';
+    if (!form.value.category_id) {
+      addFormError.value = '⚠️ Please select a Category from the dropdown first before scanning!';
+      Swal.fire('Category Required', 'Kindly choose a valid category first.', 'warning');
+      return;
+    }
+
+    Swal.fire({ title: 'Processing AI Scan...', text: 'Extracting details via Gemini AI...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    const formData = new FormData();
+    formData.append('image', fileObject);
+    formData.append('category_id', form.value.category_id);
+    formData.append('currency', form.value.currency || 'PKR');
+
+    try {
+      const response = await api.post('/transactions/scan', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+
+      if (response.data && response.data.status === 'success') {
+        const parsedAmount = parseFloat(response.data.transaction?.amount || response.data.data?.amount);
+        
+        if (!parsedAmount || parsedAmount <= 0 || isNaN(parsedAmount)) {
+          Swal.fire({ icon: 'error', title: 'Invalid Image / Receipt', text: 'AI could not detect any readable transaction amount.' });
+          return;
+        }
+
+        await fetchDashboardData();
+        await fetchBudgetAlerts();
+        Swal.fire({ icon: 'success', title: 'AI Entry Saved!', text: `Amount: ${response.data.transaction?.currency || 'PKR'} ${parsedAmount}`, timer: 2500, showConfirmButton: false });
+      }
+    } catch (error) {
+      Swal.fire('Scan Processing Failed', error.response?.data?.message || 'Could not verify financial content.', 'error');
+    }
+  };
+
+  const handleReceiptScan = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    await sendImageToAiBackend(file);
+    if (receiptInput.value) receiptInput.value.value = '';
+  };
+
+  // ==========================================
+  // 📸 Media Stream Capture Framework
+  // ==========================================
+  const openLiveCamera = async () => {
+    addFormError.value = '';
+    if (!form.value.category_id) {
+      addFormError.value = '⚠️ Please select a Category first!';
+      Swal.fire('Category Required', 'Choose a category first.', 'warning');
+      return;
+    }
+    
+    showCameraModal.value = true;
+    try {
+      localMediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      setTimeout(() => { if (videoStream.value) videoStream.value.srcObject = localMediaStream; }, 200);
+    } catch (err) {
+      showCameraModal.value = false;
+      Swal.fire('Camera Error', 'Could not fetch device media stream framework.', 'error');
+    }
+  };
+
+  const closeLiveCamera = () => {
+    if (localMediaStream) localMediaStream.getTracks().forEach(track => track.stop());
+    showCameraModal.value = false;
+  };
+
+  const capturePhotoFromStream = () => {
+    if (!videoStream.value) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoStream.value.videoWidth || 640;
+    canvas.height = videoStream.value.videoHeight || 480;
+    
+    canvas.getContext('2d').drawImage(videoStream.value, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(async (blob) => {
+      if (blob) {
+        closeLiveCamera();
+        await sendImageToAiBackend(new File([blob], "camera_snap.png", { type: "image/png" })); 
+      }
+    }, 'image/png');
+  };
+
+  // ==========================================
+  // 🎤 Automated Voice Intent Module
+  // ==========================================
+  const toggleVoiceListening = () => {
+    addFormError.value = '';
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      Swal.fire('Not Supported', 'Please use Google Chrome for optimized speech interfaces.', 'error');
+      return;
+    }
+    if (!form.value.category_id) {
+      addFormError.value = '⚠️ Please select a Category first!';
+      Swal.fire('Category Required', 'Choose a category first.', 'warning');
+      return;
+    }
+    if (isListening.value) {
+      if (recognition) recognition.stop();
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-US'; // ⚡ Language updated from 'ur-PK' to 'en-US' for structured parsing
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      isListening.value = true;
+      voiceTranscript.value = "Listening...";
+    };
+    recognition.onerror = (e) => { 
+      isListening.value = false; 
+      Swal.fire('Audio Error', `Voice engine stopped: ${e.error}`, 'error');
+    };
+    recognition.onend = () => isListening.value = false;
+
+    recognition.onresult = async (event) => {
+      const speechText = event.results[0][0].transcript;
+      voiceTranscript.value = speechText;
+
+      Swal.fire({ title: 'Voice Processing...', text: `Sending: "${speechText}"`, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      try {
+        const response = await api.post('/transactions/scan', {
+          text_prompt: speechText,
+          category_id: form.value.category_id,
+          currency: form.value.currency || 'PKR'
+        });
+
+        if (response.data && response.data.status === 'success') {
+          const parsedAmount = parseFloat(response.data.transaction?.amount || response.data.data?.amount);
+          
+          if (!parsedAmount || parsedAmount <= 0 || isNaN(parsedAmount)) {
+            Swal.fire({ icon: 'error', title: 'No Amount Detected', text: `AI couldn't find a valid amount in: "${speechText}".` });
+            return;
+          }
+
+          await fetchDashboardData();
+          await fetchBudgetAlerts();
+          Swal.fire({ icon: 'success', title: 'Audio Saved!', text: `Amount: ${parsedAmount}`, timer: 2500, showConfirmButton: false });
+        }
+      } catch (err) {
+        Swal.fire('Backend Error', err.response?.data?.message || 'Could not reach server backend.', 'error');
+      }
+    };
+    recognition.start();
+  };
+
+  // --- Core Lifecycle Hooks & Router Watching ---
+  watch(() => route.path, (newPath) => {
+    if (newPath === '/dashboard') {
+      fetchDashboardData();
+      fetchBudgetAlerts();
+    }
+  });
+
+  onMounted(async () => {
+    const impToken = route.query.impersonate_token;
+    
+    if (impToken) {
+      sessionStorage.setItem('token', impToken);
+      try {
+        const userResponse = await api.get('/user'); 
+        sessionStorage.setItem('user', JSON.stringify(userResponse.data));
+        userName.value = userResponse.data.name;
+        if (userResponse.data.default_currency) selectedDashboardCurrency.value = userResponse.data.default_currency;
+      } catch (error) {
+        console.error("Impersonated user validation failure:", error);
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      const userData = sessionStorage.getItem('user') || localStorage.getItem('user');
+      const user = userData ? JSON.parse(userData) : null;
+      if (user) {
+        userName.value = user.name;
+        if (user.default_currency) selectedDashboardCurrency.value = user.default_currency;
+      }
+    }
+
+    await Promise.all([fetchDashboardData(), fetchCategories(), fetchBudgetAlerts()]);
+  });
+
+  // ==========================================
+  // 💼 Standard Operations CRUD Handlers
+  // ==========================================
+  const markAsPaid = async (billId) => {
+    try {
+      const result = await Swal.fire({ title: 'Are you sure?', text: "Mark this bill as paid?", icon: 'question', showCancelButton: true, confirmButtonColor: '#4f46e5' });
+      if (!result.isConfirmed) return;
+
+      await api.post(`/recurring-bills/${billId}/pay`);
+      upcoming_bills.value = upcoming_bills.value.filter(b => b.id !== billId);
+      await fetchDashboardData();
+      await fetchBudgetAlerts();
+
+      Swal.fire({ title: 'Success', text: 'Bill synchronized successfully.', icon: 'success', timer: 1500, showConfirmButton: false });
+    } catch (error) {
+      Swal.fire({ title: 'Error', text: 'Failed to update bill payment.', icon: 'error' });
+    }
+  };
+
+  const handleCurrencyChange = async () => {
+    await fetchDashboardData();
+    try {
+      await api.post('/user/update-currency', { currency: selectedDashboardCurrency.value });
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      userData.default_currency = selectedDashboardCurrency.value;
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (err) {
+      console.error("Failed to save currency preference", err);
+    }
+  };
+
+  const getCurrencySymbol = (code) => {
+    const symbols = { 'PKR': 'Rs.', 'USD': '$', 'EUR': '€', 'AED': 'د.إ' };
+    return symbols[code] || code;
+  };
+
+  const fetchCategories = async () => {
+    try { const res = await api.get('/categories'); categories.value = res.data; } catch (e) { console.error(e); }
+  };
+
+  // ⚡ Updated with Anomaly Detection Swal Handler
+  const handleSubmitTransaction = async () => {
+    addFormError.value = '';
+    if (!form.value.amount || form.value.amount < 1) { addFormError.value = '⚠️ Amount must be >= 1.'; return; }
+    if (!form.value.category_id) { addFormError.value = '⚠️ Please select a category.'; return; }
+    if (!form.value.date) { addFormError.value = '⚠️ Date is required.'; return; }
+
+    formLoading.value = true;
+    try {
+      const response = await api.post('/transactions', form.value);
+      form.value = { amount: '', category_id: '', currency: 'PKR', description: '', date: new Date().toISOString().split('T')[0] };
+      await fetchDashboardData();
+      await fetchBudgetAlerts();
+
+      if (response.data && response.data.is_anomaly) {
+        Swal.fire({
+          title: '⚠️ Unusual Spending Detected!',
+          text: response.data.warning,
+          icon: 'warning',
+          confirmButtonColor: '#ef4444',
+          confirmButtonText: 'I Understand'
+        });
+      } else {
+        Swal.fire({ title: 'Success', text: 'Transaction recorded.', icon: 'success', timer: 1500, showConfirmButton: false });
+      }
     } catch (error) {
       addFormError.value = error.response?.data?.errors ? `❌ ${Object.values(error.response.data.errors).flat()[0]}` : 'Something went wrong.';
     } finally { formLoading.value = false; }
